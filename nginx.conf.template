@@ -1,0 +1,212 @@
+worker_processes auto;
+rtmp_auto_push on;
+events {
+    worker_connections 1024;
+}
+
+rtmp {
+    server {
+        listen 1935;
+        listen [::]:1935 ipv6only=on;
+
+        chunk_size 4096;
+
+        application live {
+            live on;
+            record off;
+            interleave on;
+            wait_key on;
+            wait_video on;
+            push_reconnect 5s;
+
+            allow publish 192.168.20.0/24;
+            allow publish 192.168.10.0/24;
+            allow publish 172.16.0.0/12;
+            allow publish 10.0.0.0/8;
+            allow publish 127.0.0.1;
+            deny publish all;
+
+            allow play all;
+
+            # ── Notification Scheduler (détection OBS en temps réel) ──
+            exec_publish      curl -sf http://rtmp-api:3000/api/schedule/obs-active || true;
+            exec_publish_done curl -sf http://rtmp-api:3000/api/schedule/obs-inactive || true;
+
+            # ── Push vers les plateformes ───────────────────────────
+            # Les push vers les plateformes (Twitch, YouTube, X,
+            # Facebook, PeerTube) sont gérés dynamiquement par
+            # l'API backend via des processus FFmpeg individuels.
+            # Voir: api/services/ffmpeg.js
+
+            # ── Split & Transcodage (Adaptive Bitrate) ───────────────────
+            # FFmpeg s'exécute pour générer plusieurs qualités vidéo (1080p est copié tel quel pour économiser le CPU)
+            exec_push ffmpeg -i rtmp://127.0.0.1:1935/live/$name -c copy -f flv rtmp://127.0.0.1:1935/hls/$name-1080p -c:v libx264 -c:a aac -b:v 2500k -b:a 128k -vf "scale=1280:-2" -tune zerolatency -preset veryfast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-720p -c:v libx264 -c:a aac -b:v 1000k -b:a 128k -vf "scale=854:-2" -tune zerolatency -preset veryfast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-480p -c:a aac -b:a 96k -vn -f flv rtmp://127.0.0.1:1935/hls/$name-audio;
+
+            push rtmp://127.0.0.1:1935/archive;
+        }
+
+        application archive {
+            live on;
+            record all;
+            record_path /var/recordings;
+            record_suffix _%Y%m%d_%H%M%S.flv;
+            record_unique on;
+            record_max_size 2048M;
+            on_record_done http://127.0.0.1:8080/api-callback;
+            
+            allow publish 127.0.0.1;
+            deny publish all;
+            allow play all;
+        }
+
+        application hls {
+            live on;
+            hls on;
+            hls_path /tmp/hls;
+            hls_fragment 3s;
+            hls_playlist_length 20s;
+            # ── Adaptive Bitrate Master Playlist (`.m3u8`) ──
+            hls_nested on;
+            hls_variant -1080p BANDWIDTH=4000000,RESOLUTION=1920x1080;
+            hls_variant -720p BANDWIDTH=2628000,RESOLUTION=1280x720;
+            hls_variant -480p BANDWIDTH=1128000,RESOLUTION=854x480;
+            hls_variant -audio BANDWIDTH=96000;
+            
+            allow publish 127.0.0.1;
+            deny publish all;
+            allow play all;
+        }
+
+        application webtv {
+            live on;
+            record off;
+            allow publish 127.0.0.1;
+            allow publish 192.168.10.0/24;
+            allow publish 172.16.0.0/12;
+            allow publish 10.0.0.0/8;
+            deny publish all;
+            allow play all;
+
+            # Pousser vers live pour générer le HLS ABR
+            push rtmp://127.0.0.1:1935/live;
+
+            # Optionnel: on peut imaginer pousser ce flux vers YouTube plus tard
+            # push rtmp://a.rtmp.youtube.com/live2/XXXX;
+        }
+    }
+}
+
+http {
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+
+    # Resolver pour Docker DNS (permet de résoudre rtmp-api au démarrage)
+    resolver 127.0.0.11 valid=30s;
+
+
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    # ================================================================
+    # SECURITE : Restriction d'accès par IP pour les endpoints sensibles
+    # Seuls le réseau local et le reverse proxy peuvent accéder à /stat, /control, /recordings
+    # ================================================================
+    geo $is_trusted {
+        default         0;
+        127.0.0.1       1;
+        192.168.10.0/24 1;
+        192.168.20.0/24 1;
+        10.10.10.0/24   1;
+    }
+
+    server {
+        listen 8080;
+        server_name _;
+
+        # ============================================================
+        # STATS - Accès restreint aux IPs de confiance
+        # ============================================================
+        location /stat {
+
+            rtmp_stat all;
+            rtmp_stat_stylesheet stat.xsl;
+            add_header Access-Control-Allow-Origin https://rtmp.causecommune.fm always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            add_header X-Content-Type-Options nosniff always;
+        }
+
+        location /stat.xsl {
+            root /usr/local/nginx/html;
+        }
+
+        location /logo {
+            alias /usr/local/nginx/html/logo;
+        }
+
+        # ============================================================
+        # CONTROLE RTMP - Accès STRICTEMENT restreint à localhost
+        # Permet de couper/démarrer les streams à distance
+        # ============================================================
+        location /control {
+            allow 127.0.0.1;
+            deny all;
+            rtmp_control all;
+        }
+
+        # ============================================================
+        # HLS - Streaming accessible publiquement, CORS restreint
+        # ============================================================
+        location /hls {
+            types {
+                application/vnd.apple.mpegurl m3u8;
+                video/mp2t ts;
+            }
+            root /tmp;
+            # On autorise le cross-origin de manière plus large pour les lecteurs web
+            add_header Cache-Control no-cache;
+            add_header Access-Control-Allow-Origin * always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            add_header X-Content-Type-Options nosniff always;
+        }
+
+        # ============================================================
+        # HEALTH - Accessible sans restriction (monitoring)
+        # ============================================================
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+
+        # ============================================================
+        # RECORDINGS - Accès restreint aux IPs de confiance
+        # ============================================================
+        location /recordings {
+
+            alias /var/recordings;
+            autoindex on;
+            autoindex_exact_size off;
+            autoindex_localtime on;
+            add_header X-Content-Type-Options nosniff always;
+        }
+
+        # Proxy interne pour éviter les échecs de résolution au démarrage
+        location /api-callback {
+            set $api_upstream "rtmp-api";
+            proxy_pass http://$api_upstream:3000/api/vod/callback;
+            proxy_set_header Host $host;
+        }
+
+        # Proxy interne pour les callbacks du scheduler
+        location /schedule-callback/ {
+            set $api_upstream "rtmp-api";
+            proxy_pass http://$api_upstream:3000/api/schedule/;
+            proxy_set_header Host $host;
+        }
+    }
+}

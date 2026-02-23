@@ -1,0 +1,44 @@
+{
+  "platforms": [
+    {
+      "id": "peertube",
+      "name": "PeerTube",
+      "enabled": true,
+      "rtmp_url": "rtmp://votre-instance.peertube.fr/live/",
+      "key_env": "PEERTUBE_KEY",
+      "max_bitrate_kbps": 4000
+    },
+    {
+      "id": "twitch",
+      "name": "Twitch",
+      "enabled": true,
+      "rtmp_url": "rtmp://live.twitch.tv/app/",
+      "key_env": "TWITCH_KEY",
+      "max_bitrate_kbps": 6000
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "enabled": true,
+      "rtmp_url": "rtmps://a.rtmp.youtube.com/live2/",
+      "key_env": "YOUTUBE_KEY",
+      "max_bitrate_kbps": 9000
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "enabled": false,
+      "rtmp_url": "rtmps://live-api-s.facebook.com:443/rtmp/",
+      "key_env": "FACEBOOK_KEY",
+      "max_bitrate_kbps": 4000
+    },
+    {
+      "id": "x",
+      "name": "X (Twitter)",
+      "enabled": false,
+      "rtmp_url": "rtmps://prod-ec-ap-southeast-2.compose.x.com/rtmp/",
+      "key_env": "X_KEY",
+      "max_bitrate_kbps": 6000
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+
+
+# ============================================================================
+# Docker Compose - Radio Cause Commune - Serveur de Multistreaming
+# ============================================================================
+# Images épinglées, healthchecks complets, log rotation activée
+# ============================================================================
+
+services:
+  nginx-rtmp:
+    image: alfg/nginx-rtmp:latest
+    container_name: rtmp-server-cc
+    restart: unless-stopped
+    ports:
+      - "1935:1935"
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+      - ./generate-nginx.sh:/generate-nginx.sh:ro
+      - ./.env:/etc/nginx/.env:ro
+      - ./recordings:/var/recordings
+      - ./logs:/var/log/nginx
+      - ./hls:/tmp/hls
+      - ./dash:/tmp/dash
+      - ./logo:/usr/local/nginx/html/logo:ro
+    networks:
+      - streaming-net
+    depends_on:
+      stunnel:
+        condition: service_healthy
+    environment:
+      - TZ=Europe/Paris
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    command: >
+      /bin/sh -c "/generate-nginx.sh && nginx -g 'daemon off;'"
+
+  rtmp-api:
+    build: ./api
+    container_name: rtmp-api-cc
+    restart: unless-stopped
+    volumes:
+      - ./platforms.json:/app/platforms.json
+      - ./schedule.json:/app/schedule.json
+      - ./webtv-overlay:/app/webtv-overlay:ro
+      - ./.env:/app/.env:ro
+      - ./recordings:/var/recordings
+    networks:
+      - streaming-net
+    depends_on:
+      - nginx-rtmp
+    environment:
+      - NGINX_RTMP_URL=rtmp://nginx-rtmp:1935/live
+      - NGINX_STAT_URL=http://nginx-rtmp:8080/stat
+      - STREAM_NAME=radiocausecommune
+      - ENV_FILE=/app/.env
+      - PLATFORMS_FILE=/app/platforms.json
+      - TZ=Europe/Paris
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  rtmp-stats:
+    image: nginx:alpine
+    container_name: rtmp-stats-cc
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./stats-dashboard:/usr/share/nginx/html:ro
+      - ./stats-dashboard/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - streaming-net
+    depends_on:
+      nginx-rtmp:
+        condition: service_healthy
+      rtmp-api:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:80/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  stunnel:
+    image: dweomer/stunnel:latest
+    container_name: rtmp-tunnel-cc
+    restart: unless-stopped
+    volumes:
+      - ./stunnel.conf:/etc/stunnel/stunnel.conf:ro
+    networks:
+      - streaming-net
+    entrypoint: ["stunnel"]
+    command: ["/etc/stunnel/stunnel.conf"]
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z 127.0.0.1 19350 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+networks:
+  streaming-net:
+    driver: bridge

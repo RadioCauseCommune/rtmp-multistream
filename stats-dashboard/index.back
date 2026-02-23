@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Dashboard - Radio Cause Commune</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@900&family=Roboto:wght@400;700&family=Syne:wght@800&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- HLS.js for Web Player -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <style>
+        :root {
+            --neo-bg: #FFFAE5;
+            --neo-black: #0f0f0f;
+            --cc-rouge: #D20A33;
+            --cc-fond: #F2F3F5;
+            --neo-accent: #A3FF00;
+            --neo-purple: #9D00FF;
+            --neo-blue: #0047FF;
+            --neo-orange: #FF6B00;
+            --font-main: 'Roboto', sans-serif;
+            --font-condensed: 'Roboto Condensed', sans-serif;
+            --font-display: 'Syne', sans-serif;
+            --border-std: 3px solid var(--neo-black);
+            --border-thick: 4px solid var(--neo-black);
+            --shadow: 8px 8px 0px 0px var(--neo-black);
+            --shadow-sm: 4px 4px 0px 0px var(--neo-black);
+            --shadow-hover: 12px 12px 0px 0px var(--neo-black);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        ::selection {
+            background: var(--cc-rouge);
+            color: var(--neo-bg);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--neo-bg);
+            color: var(--neo-black);
+            padding: 40px 20px;
+            line-height: 1.7;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Grain Texture */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            text-align: left;
+            margin-bottom: 60px;
+            padding: 30px;
+            border: var(--border-thick);
+            background: white;
+            box-shadow: var(--shadow);
+        }
+
+        header .logo {
+            height: 100px;
+            width: auto;
+        }
+
+        header div {
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            text-transform: uppercase;
+            line-height: 1;
+            margin-bottom: 15px;
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        header p {
+            font-family: var(--font-condensed);
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: var(--neo-black);
+            background: var(--neo-accent);
+            display: inline-block;
+            padding: 5px 15px;
+            border: var(--border-std);
+            box-shadow: 4px 4px 0px 0px var(--neo-black);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+
+        .status-card {
+            background: white;
+            border: var(--border-std);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .status-card h3 {
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--neo-black);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        .status-value {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 15px 0;
+            line-height: 1;
+        }
+
+        .status-label {
+            font-family: var(--font-condensed);
+            color: var(--neo-black);
+            font-size: 1rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .stream-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 25px;
+            border: var(--border-thick);
+            font-weight: 900;
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .stream-status.live {
+            background: var(--neo-accent);
+            animation: live-pulse 2s infinite;
+        }
+
+        @keyframes live-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .stream-status.offline {
+            background: white;
+            color: var(--neo-black);
+        }
+
+        /* ── HLS Player ─────────────────────────────────────────── */
+        .hls-container {
+            background: white;
+            border: var(--border-std);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            margin-bottom: 50px;
+        }
+
+        .hls-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--neo-black);
+            padding-bottom: 15px;
+        }
+
+        .hls-header h2 {
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            font-size: 2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hls-video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            /* 16:9 Aspect Ratio */
+            background: var(--neo-black);
+            border: var(--border-std);
+            overflow: hidden;
+        }
+
+        #hls-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .hls-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* ── Platforms section ────────────────────────────────────── */
+        .platforms {
+            background: white;
+            border: var(--border-std);
+            padding: 40px;
+            box-shadow: var(--shadow);
+            margin-bottom: 50px;
+        }
+
+        .platforms-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            border-bottom: 3px solid var(--neo-black);
+            padding-bottom: 15px;
+        }
+
+        .platforms-header h2 {
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            font-size: 2rem;
+            margin: 0;
+            border: none;
+            padding: 0;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            border: var(--border-std);
+            padding: 10px 20px;
+            font-family: var(--font-condensed);
+            font-weight: 900;
+            font-size: 1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+
+        .btn-start {
+            background: var(--neo-accent);
+            color: var(--neo-black);
+        }
+
+        .btn-stop {
+            background: var(--cc-rouge);
+            color: white;
+        }
+
+        .btn-disabled {
+            background: var(--cc-fond);
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .platform {
+            background: var(--cc-fond);
+            border: var(--border-std);
+            padding: 25px 20px;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 260px;
+            position: relative;
+        }
+
+        .platform:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: var(--shadow);
+        }
+
+        .platform.relay-running {
+            background: var(--neo-accent);
+        }
+
+        .platform.relay-error {
+            background: #FFD6D6;
+        }
+
+        .platform.disabled {
+            opacity: 0.5;
+        }
+
+        .platform-name {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+
+        .platform-name i {
+            width: 36px;
+            height: 36px;
+        }
+
+        .platform-bitrate {
+            font-family: var(--font-condensed);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--neo-black);
+            opacity: 0.8;
+            margin-bottom: 12px;
+        }
+
+        /* ── Toggle Switch ──────────────────────────────────────── */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-label {
+            font-family: var(--font-condensed);
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .toggle {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #ccc;
+            border: 2px solid var(--neo-black);
+            border-radius: 0;
+            transition: 0.2s;
+        }
+
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 2px;
+            bottom: 2px;
+            background: white;
+            border: 2px solid var(--neo-black);
+            transition: 0.2s;
+        }
+
+        .toggle input:checked+.toggle-slider {
+            background: var(--neo-accent);
+        }
+
+        .toggle input:checked+.toggle-slider::before {
+            transform: translateX(24px);
+        }
+
+        /* ── Relay status badge ─────────────────────────────────── */
+        .relay-badge {
+            font-family: var(--font-condensed);
+            font-size: 0.85rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border: 2px solid var(--neo-black);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .relay-badge.running {
+            background: var(--neo-accent);
+        }
+
+        .relay-badge.stopped {
+            background: white;
+        }
+
+        .relay-badge.error {
+            background: var(--cc-rouge);
+            color: white;
+        }
+
+        .relay-badge.disabled-badge {
+            background: #ddd;
+            color: #888;
+        }
+
+        .relay-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1.5px solid var(--neo-black);
+        }
+
+        .relay-dot.running {
+            background: #00CC00;
+            animation: live-pulse 1s infinite;
+        }
+
+        .relay-dot.stopped {
+            background: #999;
+        }
+
+        .relay-dot.error {
+            background: white;
+        }
+
+        /* ── Platform action button ─────────────────────────────── */
+        .platform-action {
+            border: 2px solid var(--neo-black);
+            padding: 8px 18px;
+            font-family: var(--font-condensed);
+            font-weight: 900;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 3px 3px 0px 0px var(--neo-black);
+        }
+
+        .platform-action:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0px 0px var(--neo-black);
+        }
+
+        .platform-action:active {
+            transform: translate(1px, 1px);
+            box-shadow: none;
+        }
+
+        .platform-action.start {
+            background: var(--neo-accent);
+        }
+
+        .platform-action.stop {
+            background: var(--cc-rouge);
+            color: white;
+        }
+
+        .platform-action:disabled {
+            background: #ddd;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .platform-action:disabled:hover {
+            transform: none;
+        }
+
+        /* ── Stats table ────────────────────────────────────────── */
+        .stats-table {
+            background: white;
+            border: var(--border-std);
+            padding: 40px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+
+        .stats-table h2 {
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            border-bottom: 3px solid var(--neo-black);
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-main);
+        }
+
+        th {
+            background: var(--neo-black);
+            color: white;
+            padding: 20px;
+            text-align: left;
+            font-family: var(--font-condensed);
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        td {
+            padding: 20px;
+            border-bottom: 2px solid var(--neo-black);
+            font-weight: 500;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--cc-fond);
+        }
+
+        /* ── Footer ─────────────────────────────────────────────── */
+        .refresh-info {
+            text-align: center;
+            margin-top: 50px;
+            padding-bottom: 40px;
+        }
+
+        .refresh-btn {
+            background: var(--cc-rouge);
+            color: white;
+            border: var(--border-std);
+            padding: 15px 40px;
+            font-family: var(--font-condensed);
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.1s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: var(--shadow-hover);
+            background: var(--neo-purple);
+        }
+
+        .refresh-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+
+        .alert {
+            background: var(--cc-rouge);
+            color: white;
+            border: var(--border-thick);
+            padding: 20px;
+            margin-bottom: 30px;
+            font-family: var(--font-condensed);
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .recording-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: var(--cc-rouge);
+            border: 2px solid var(--neo-black);
+            border-radius: 50%;
+            animation: live-pulse 1s infinite;
+            margin-right: 10px;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            border: var(--border-std);
+            font-family: var(--font-condensed);
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: var(--shadow);
+            z-index: 10000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--neo-accent);
+            color: var(--neo-black);
+        }
+
+        .toast.error {
+            background: var(--cc-rouge);
+            color: white;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--neo-bg);
+            border-left: 2px solid var(--neo-black);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--cc-rouge);
+            border: 2px solid var(--neo-black);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b0082a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <img src="logo/logo-cc-V3-green-defonce.png" alt="Radio Cause Commune Logo" class="logo">
+            <div>
+                <h1><i data-lucide="radio" style="width: 42px; height: 42px;"></i> Streaming Dashboard</h1>
+                <p>Radio Cause Commune - 93.1 FM Paris</p>
+            </div>
+        </header>
+
+        <div class="alert" id="alert">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="alert-triangle"></i>
+                <strong>Attention:</strong> <span id="alert-message"></span>
+            </div>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>Etat du Stream</h3>
+                <div class="status-value" id="stream-status">
+                    <span class="stream-status offline"><i data-lucide="power-off"
+                            style="width: 20px; height: 20px;"></i> OFFLINE</span>
+                </div>
+                <div class="status-label">Status actuel</div>
+            </div>
+
+            <div class="status-card">
+                <h3>Bitrate Upload</h3>
+                <div class="status-value" id="bitrate">0 kbps</div>
+                <div class="status-label">Debit sortant</div>
+            </div>
+
+            <div class="status-card">
+                <h3>Viewers</h3>
+                <div class="status-value" id="viewers">0</div>
+                <div class="status-label">Spectateurs connectes</div>
+            </div>
+
+            <div class="status-card">
+                <h3>Duree</h3>
+                <div class="status-value" id="duration">00:00:00</div>
+                <div class="status-label">Temps de stream</div>
+            </div>
+
+            <div class="status-card" style="border: var(--border-thick); background: #f0f8ff;">
+                <h3>WebTV 24/7 (Audio)</h3>
+                <div class="status-value" id="webtv-status">
+                    <span class="stream-status offline" style="font-size: 1rem;"><i data-lucide="power-off"
+                            style="width: 16px; height: 16px;"></i> OFFLINE</span>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-start" id="btn-webtv-start" onclick="toggleWebTV(true)"
+                        style="padding: 5px 10px; font-size: 0.8rem;">START</button>
+                    <button class="btn btn-stop" id="btn-webtv-stop" onclick="toggleWebTV(false)"
+                        style="padding: 5px 10px; font-size: 0.8rem;" disabled>STOP</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="hls-container">
+            <div class="hls-header">
+                <h2><i data-lucide="cast" style="width: 28px; height: 28px;"></i> Live Monitor (HLS ABR)</h2>
+                <div class="relay-badge disabled-badge" id="hls-badge">
+                    <div class="relay-dot stopped" id="hls-dot"></div> <span id="hls-text">OFFLINE</span>
+                </div>
+            </div>
+            <div class="hls-video-wrapper">
+                <video id="hls-video" controls muted playsinline></video>
+            </div>
+            <div class="hls-controls">
+                <button class="btn btn-start" onclick="loadHlsFeed()">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i> Charger le flux
+                </button>
+                <span
+                    style="font-family: var(--font-condensed); font-weight: 700; font-size: 0.9rem; margin-left: auto;">
+                    Playlist : <code
+                        style="background: var(--cc-fond); padding: 4px 8px; border: 2px solid var(--neo-black);">/hls/causecommune.m3u8</code>
+                </span>
+            </div>
+        </div>
+
+        <div class="platforms">
+            <div class="platforms-header">
+                <h2>Diffusion Temps Reel</h2>
+                <div class="bulk-actions" id="bulk-actions">
+                    <button class="btn btn-start" onclick="startAll()" id="btn-start-all">
+                        <i data-lucide="play" style="width: 18px; height: 18px;"></i> Tout demarrer
+                    </button>
+                    <button class="btn btn-stop" onclick="stopAll()" id="btn-stop-all">
+                        <i data-lucide="square" style="width: 18px; height: 18px;"></i> Tout arreter
+                    </button>
+                </div>
+            </div>
+            <div class="platform-grid" id="platform-grid">
+                <!-- Platforms are rendered dynamically -->
+            </div>
+        </div>
+
+        <div class="stats-table">
+            <h2>Statistiques detaillees</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metrique</th>
+                        <th>Valeur</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-tbody">
+                    <tr>
+                        <td>Bytes envoyes</td>
+                        <td id="bytes-sent">0 MB</td>
+                        <td>Total des donnees uploadees</td>
+                    </tr>
+                    <tr>
+                        <td>FPS</td>
+                        <td id="fps">0</td>
+                        <td>Images par seconde</td>
+                    </tr>
+                    <tr>
+                        <td>Codec video</td>
+                        <td id="video-codec">-</td>
+                        <td>Encodage video utilise</td>
+                    </tr>
+                    <tr>
+                        <td>Codec audio</td>
+                        <td id="audio-codec">-</td>
+                        <td>Encodage audio utilise</td>
+                    </tr>
+                    <tr>
+                        <td>Resolution</td>
+                        <td id="resolution">-</td>
+                        <td>Dimensions du stream</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="refresh-info">
+            <p>Derniere mise a jour: <span id="last-update">Jamais</span></p>
+            <button class="refresh-btn" onclick="fetchAll()">Rafraichir</button>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ── Configuration ──────────────────────────────────────────
+        const API_BASE = '/api';
+        const STAT_URL = '/stat';
+        const REFRESH_INTERVAL = 5000;
+
+        let refreshTimer;
+        let platformsCache = [];
+
+        // ── Toast notifications ────────────────────────────────────
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ── API calls ──────────────────────────────────────────────
+        async function apiCall(method, path, body = null) {
+            try {
+                const opts = {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                };
+                if (body) opts.body = JSON.stringify(body);
+                const res = await fetch(`${API_BASE}${path}`, opts);
+                return await res.json();
+            } catch (err) {
+                console.error(`API error ${method} ${path}:`, err);
+                showToast(`Erreur API: ${err.message}`, 'error');
+                return null;
+            }
+        }
+
+        // ── Fetch everything ───────────────────────────────────────
+        async function fetchAll() {
+            await Promise.all([fetchStats(), fetchPlatforms(), fetchWebTV()]);
+        }
+
+        // ── Fetch WebTV status ─────────────────────────────────────
+        async function fetchWebTV() {
+            const data = await apiCall('GET', '/webtv/status');
+            if (data) {
+                const statusEl = document.getElementById('webtv-status');
+                const btnStart = document.getElementById('btn-webtv-start');
+                const btnStop = document.getElementById('btn-webtv-stop');
+
+                if (data.status === 'running') {
+                    statusEl.innerHTML = '<span class="stream-status live" style="font-size: 1rem; padding: 5px 10px;"><i data-lucide="radio" style="width: 16px; height: 16px;"></i> EN DIRECT</span>';
+                    btnStart.disabled = true;
+                    btnStop.disabled = false;
+                } else if (data.status === 'starting') {
+                    statusEl.innerHTML = '<span class="stream-status offline" style="font-size: 1rem; padding: 5px 10px;"><i data-lucide="loader" style="width: 16px; height: 16px;"></i> DÉMARRAGE...</span>';
+                    btnStart.disabled = true;
+                    btnStop.disabled = true;
+                } else {
+                    statusEl.innerHTML = '<span class="stream-status offline" style="font-size: 1rem; padding: 5px 10px;"><i data-lucide="power-off" style="width: 16px; height: 16px;"></i> ARRÊTÉ</span>';
+                    btnStart.disabled = false;
+                    btnStop.disabled = true;
+                }
+                lucide.createIcons();
+            }
+        }
+
+        async function toggleWebTV(start) {
+            const endpoint = start ? '/webtv/start' : '/webtv/stop';
+            showToast(`${start ? 'Démarrage' : 'Arrêt'} de la WebTV...`);
+            const data = await apiCall('POST', endpoint);
+            if (data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                setTimeout(fetchWebTV, 2000);
+            }
+        }
+
+        // ── Fetch stream stats (XML direct for speed) ──────────────
+        async function fetchStats() {
+            try {
+                const response = await fetch(STAT_URL);
+                const xmlText = await response.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                const server = xmlDoc.querySelector('server');
+                if (!server) { showOffline(); return; }
+
+                const liveApp = Array.from(xmlDoc.querySelectorAll('application')).find(
+                    app => app.querySelector('name')?.textContent === 'live'
+                );
+
+                if (liveApp && liveApp.querySelector('stream')) {
+                    updateStreamStats(liveApp.querySelector('stream'));
+                } else {
+                    showOffline();
+                }
+
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString('fr-FR');
+            } catch (error) {
+                console.error('Erreur stats:', error);
+            }
+        }
+
+        // ── Fetch platforms from API ───────────────────────────────
+        async function fetchPlatforms() {
+            const data = await apiCall('GET', '/platforms');
+            if (data && data.platforms) {
+                platformsCache = data.platforms;
+                renderPlatforms(data.platforms);
+            }
+        }
+
+        // ── Render platforms ───────────────────────────────────────
+        function renderPlatforms(platforms) {
+            const grid = document.getElementById('platform-grid');
+            grid.innerHTML = '';
+
+            // Add archive card (always present, not API-managed)
+            const archiveHtml = `
+                <div class="platform relay-running">
+                    <div class="platform-name"><i data-lucide="hard-drive"></i> Archives</div>
+                    <div class="relay-badge running">
+                        <span class="relay-dot running"></span> Actif
+                    </div>
+                    <div class="platform-bitrate">
+                        <span class="recording-indicator"></span>Recording
+                    </div>
+                </div>
+            `;
+
+            for (const p of platforms) {
+                const relayStatus = p.relay?.status || 'stopped';
+                const isRunning = relayStatus === 'running';
+                const isError = relayStatus === 'error';
+
+                let cardClass = 'platform';
+                if (!p.enabled) cardClass += ' disabled';
+                else if (isRunning) cardClass += ' relay-running';
+                else if (isError) cardClass += ' relay-error';
+
+                // Badge
+                let badgeClass, badgeDotClass, badgeText;
+                if (!p.enabled) {
+                    badgeClass = 'disabled-badge';
+                    badgeDotClass = 'stopped';
+                    badgeText = 'Desactivee';
+                } else if (isRunning) {
+                    badgeClass = 'running';
+                    badgeDotClass = 'running';
+                    badgeText = 'Push actif';
+                } else if (isError) {
+                    badgeClass = 'error';
+                    badgeDotClass = 'error';
+                    badgeText = 'Erreur';
+                } else {
+                    badgeClass = 'stopped';
+                    badgeDotClass = 'stopped';
+                    badgeText = 'Inactif';
+                }
+
+                // Action button
+                let actionBtn;
+                if (!p.enabled) {
+                    actionBtn = `<button class="platform-action" disabled>Desactivee</button>`;
+                } else if (isRunning) {
+                    actionBtn = `<button class="platform-action stop" onclick="stopPlatform('${p.id}')">
+                        <i data-lucide="square" style="width:14px;height:14px"></i> Stop
+                    </button>`;
+                } else {
+                    actionBtn = `<button class="platform-action start" onclick="startPlatform('${p.id}')">
+                        <i data-lucide="play" style="width:14px;height:14px"></i> Start
+                    </button>`;
+                }
+
+                grid.innerHTML += `
+                    <div class="${cardClass}" id="platform-${p.id}">
+                        <div class="platform-name">
+                            <i data-lucide="${p.icon}"></i> ${p.name}
+                        </div>
+                        <div class="relay-badge ${badgeClass}">
+                            <span class="relay-dot ${badgeDotClass}"></span> ${badgeText}
+                        </div>
+                        <div class="toggle-row">
+                            <span class="toggle-label">Active</span>
+                            <label class="toggle">
+                                <input type="checkbox" ${p.enabled ? 'checked' : ''}
+                                    onchange="togglePlatform('${p.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="platform-bitrate">${p.max_bitrate_kbps} kbps max</div>
+                        ${actionBtn}
+                    </div>
+                `;
+            }
+
+            // Archive card at the end
+            grid.innerHTML += archiveHtml;
+
+            lucide.createIcons();
+        }
+
+        // ── Platform actions ───────────────────────────────────────
+        async function togglePlatform(id, enabled) {
+            const data = await apiCall('PATCH', `/platforms/${id}`, { enabled });
+            if (data) {
+                showToast(`${data.platform?.name || id} ${enabled ? 'activee' : 'desactivee'}`);
+                await fetchPlatforms();
+            }
+        }
+
+        async function startPlatform(id) {
+            showToast(`Demarrage du push vers ${id}...`);
+            const data = await apiCall('POST', `/stream/platforms/${id}/start`);
+            if (data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                // Wait a bit for FFmpeg to start
+                setTimeout(fetchPlatforms, 1000);
+            }
+        }
+
+        async function stopPlatform(id) {
+            const data = await apiCall('POST', `/stream/platforms/${id}/stop`);
+            if (data) {
+                showToast(data.message, data.success ? 'success' : 'error');
+                setTimeout(fetchPlatforms, 1000);
+            }
+        }
+
+        async function startAll() {
+            showToast('Demarrage de tous les push...');
+            await apiCall('POST', '/stream/start-all');
+            setTimeout(fetchPlatforms, 1500);
+        }
+
+        async function stopAll() {
+            await apiCall('POST', '/stream/stop-all');
+            showToast('Tous les push arretes');
+            setTimeout(fetchPlatforms, 1000);
+        }
+
+        // ── Update stream stats (from XML) ─────────────────────────
+        function updateStreamStats(stream) {
+            const statusEl = document.getElementById('stream-status');
+            statusEl.innerHTML = '<span class="stream-status live"><i data-lucide="radio-tower" style="width: 20px; height: 20px;"></i> LIVE</span>';
+
+            const bwVideo = parseInt(stream.querySelector('bw_video')?.textContent || 0);
+            const bwAudio = parseInt(stream.querySelector('bw_audio')?.textContent || 0);
+            const totalBitrate = Math.round((bwVideo + bwAudio) / 1024);
+            document.getElementById('bitrate').textContent = `${totalBitrate} kbps`;
+
+            const nclients = stream.querySelector('nclients')?.textContent || 0;
+            document.getElementById('viewers').textContent = nclients;
+
+            const time = parseInt(stream.querySelector('time')?.textContent || 0);
+            document.getElementById('duration').textContent = formatDuration(time);
+
+            const bytesSent = parseInt(stream.querySelector('bytes_out')?.textContent || 0);
+            document.getElementById('bytes-sent').textContent = formatBytes(bytesSent);
+
+            const videoCodec = stream.querySelector('meta video codec')?.textContent || '-';
+            const audioCodec = stream.querySelector('meta audio codec')?.textContent || '-';
+            document.getElementById('video-codec').textContent = videoCodec;
+            document.getElementById('audio-codec').textContent = audioCodec;
+
+            const width = stream.querySelector('meta video width')?.textContent;
+            const height = stream.querySelector('meta video height')?.textContent;
+            if (width && height) {
+                document.getElementById('resolution').textContent = `${width}x${height}`;
+            }
+
+            const fps = stream.querySelector('meta video frame_rate')?.textContent || '0';
+            document.getElementById('fps').textContent = fps;
+
+            document.getElementById('alert').classList.remove('show');
+            lucide.createIcons();
+        }
+
+        function showOffline() {
+            document.getElementById('stream-status').innerHTML =
+                '<span class="stream-status offline"><i data-lucide="power-off" style="width: 20px; height: 20px;"></i> OFFLINE</span>';
+            document.getElementById('bitrate').textContent = '0 kbps';
+            document.getElementById('viewers').textContent = '0';
+            document.getElementById('duration').textContent = '00:00:00';
+            lucide.createIcons();
+        }
+
+        function showAlert(message) {
+            const alertEl = document.getElementById('alert');
+            document.getElementById('alert-message').textContent = message;
+            alertEl.classList.add('show');
+        }
+
+        function formatDuration(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 MB';
+            const mb = bytes / (1024 * 1024);
+            if (mb < 1024) return `${mb.toFixed(2)} MB`;
+            return `${(mb / 1024).toFixed(2)} GB`;
+        }
+
+        // ── Auto-refresh ───────────────────────────────────────────
+        function startAutoRefresh() {
+            refreshTimer = setInterval(fetchAll, REFRESH_INTERVAL);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshTimer) clearInterval(refreshTimer);
+        }
+
+        // ── HLS Player initialization ──────────────────────────────
+        let hlsInstance = null;
+
+        function loadHlsFeed() {
+            const video = document.getElementById('hls-video');
+            const source = '/hls/causecommune.m3u8';
+            const badge = document.getElementById('hls-badge');
+            const dot = document.getElementById('hls-dot');
+            const text = document.getElementById('hls-text');
+
+            // Nettoyage éventuel si on recharge
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+
+            if (Hls.isSupported()) {
+                hlsInstance = new Hls({ debug: false });
+                hlsInstance.loadSource(source);
+                hlsInstance.attachMedia(video);
+
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+                    video.play().catch(e => console.log('Autoplay blocked:', e));
+                    badge.className = 'relay-badge running';
+                    dot.className = 'relay-dot running';
+                    text.innerText = 'PLAYING ABR';
+                    showToast('Flux HLS chargé avec succès', 'success');
+                });
+
+                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hlsInstance.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hlsInstance.recoverMediaError();
+                                break;
+                            default:
+                                hlsInstance.destroy();
+                                badge.className = 'relay-badge error';
+                                dot.className = 'relay-dot error';
+                                text.innerText = 'ERROR';
+                                break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Pour Safari (iOS/macOS) qui gère le HLS nativement
+                video.src = source;
+                video.addEventListener('loadedmetadata', function () {
+                    video.play();
+                    badge.className = 'relay-badge running';
+                    dot.className = 'relay-dot running';
+                    text.innerText = 'PLAYING ABR (NATIVE)';
+                });
+            } else {
+                showToast('Votre navigateur ne supporte pas la lecture HLS', 'error');
+            }
+        }
+
+        // ── Init ───────────────────────────────────────────────────
+        fetchAll();
+        startAutoRefresh();
+        lucide.createIcons();
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+                fetchAll();
+            }
+        });
+    </script>
+</body>
+
+</html>

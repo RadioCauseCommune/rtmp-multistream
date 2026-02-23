@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Overlay Radio Cause Commune + Sous-titres Voxtral</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&display=swap">
+    <style>
+        /* --- CHARTE GRAPHIQUE NÉO-BRUTALISTE --- */
+
+        :root {
+            --rcc-red: #E31B3C;
+            --rcc-green: #B6F529;
+            --rcc-purple: #A722F2;
+            --rcc-black: #000000;
+            --rcc-white: #FFFFFF;
+            --border-width: 4px;
+            --shadow-offset: 6px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 1080px;
+            background: transparent;
+            font-family: 'Barlow Condensed', sans-serif;
+            overflow: hidden;
+        }
+
+        /* --- LOGO (Haut Gauche) --- */
+        #logo-container {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            transform: rotate(-4deg);
+            transform-origin: center center;
+            animation: breathe 4s ease-in-out infinite;
+        }
+
+        #logo-img {
+            width: 160px;
+            height: auto;
+            display: block;
+            filter: drop-shadow(6px 6px 0px #000000);
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: rotate(-4deg) scale(1);
+            }
+
+            50% {
+                transform: rotate(-4deg) scale(1.03);
+            }
+
+            100% {
+                transform: rotate(-4deg) scale(1);
+            }
+        }
+
+        /* --- SOUS-TITRES EN DIRECT (VOXTRAL) --- */
+        #subtitle-container {
+            position: absolute;
+            bottom: 170px;
+            /* Au-dessus du bandeau infos */
+            left: 50px;
+            right: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #subtitle-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .subtitle-box {
+            background-color: var(--rcc-black);
+            color: var(--rcc-white);
+            border: var(--border-width) solid var(--rcc-black);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--rcc-green);
+            padding: 20px 40px;
+            max-width: 80%;
+            text-align: center;
+            position: relative;
+        }
+
+        /* Badge "LIVE" sur les sous-titres */
+        .subtitle-box::before {
+            content: "LIVE";
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background-color: var(--rcc-red);
+            color: var(--rcc-white);
+            padding: 4px 12px;
+            font-size: 14px;
+            font-weight: 900;
+            border: 2px solid var(--rcc-black);
+            animation: pulse-live 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-live {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        #subtitle-text {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin: 0;
+        }
+
+        /* Indicateur de connexion */
+        #connection-status {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background-color: var(--rcc-black);
+            color: var(--rcc-white);
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 2px solid var(--rcc-black);
+            box-shadow: 4px 4px 0px var(--rcc-red);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #connection-status.show {
+            opacity: 1;
+        }
+
+        #connection-status.connected {
+            box-shadow: 4px 4px 0px var(--rcc-green);
+        }
+
+        #connection-status.disconnected {
+            box-shadow: 4px 4px 0px var(--rcc-red);
+        }
+
+        /* --- BANDEAU INFOS (Bas) --- */
+        #lower-third {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            right: 50px;
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+        }
+
+        .badge-live {
+            background-color: var(--rcc-black);
+            color: var(--rcc-white);
+            padding: 10px 20px;
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            border: var(--border-width) solid var(--rcc-black);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--rcc-green);
+        }
+
+        .program-box {
+            background-color: var(--rcc-white);
+            border: var(--border-width) solid var(--rcc-black);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--rcc-black);
+            padding: 15px 30px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .program-title {
+            font-size: 42px;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1;
+            margin-bottom: 5px;
+            color: var(--rcc-black);
+        }
+
+        .program-desc {
+            font-size: 24px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .time-box {
+            position: relative;
+            background-color: var(--rcc-white);
+            border: var(--border-width) solid var(--rcc-black);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--rcc-black);
+            min-width: 140px;
+            text-align: center;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 54px;
+        }
+
+        #prog-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: var(--rcc-green);
+            z-index: 1;
+            border-right: 2px solid var(--rcc-black);
+            transition: width 1s linear;
+        }
+
+        #prog-time-text {
+            position: relative;
+            z-index: 2;
+            font-weight: 700;
+            font-size: 28px;
+            padding: 0 15px;
+        }
+
+        .fade-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8) translateY(50px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOGO -->
+    <div id="logo-container">
+        <img src="logo-cc-V3-green.png" id="logo-img" alt="Radio Cause Commune 93.1 FM">
+    </div>
+
+    <!-- INDICATEUR DE CONNEXION -->
+    <div id="connection-status">⚫ Déconnecté</div>
+
+    <!-- SOUS-TITRES LIVE (VOXTRAL) -->
+    <div id="subtitle-container">
+        <div class="subtitle-box">
+            <p id="subtitle-text"></p>
+        </div>
+    </div>
+
+    <!-- BANDEAU BAS -->
+    <div id="lower-third" class="fade-in">
+        <div class="badge-live">En Direct</div>
+
+        <div class="program-box">
+            <div class="program-title" id="prog-name">Chargement...</div>
+            <div class="program-desc" id="prog-desc">Récupération des données en cours</div>
+        </div>
+
+        <div class="time-box">
+            <div id="prog-bar"></div>
+            <span id="prog-time-text">--:--</span>
+        </div>
+    </div>
+
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_URL = 'https://audio.libre-a-toi.org/api/live-info-v2';
+        // Bridge Voxtral sur le Z440 (LAN)
+        const VOXTRAL_SOCKETIO_URL = 'http://192.168.10.105:5004';
+
+        // Variables globales
+        let globalStartTime = null;
+        let globalEndTime = null;
+        let lastSubtitleText = '';
+        let subtitleTimeout = null;
+        let socket = null;
+
+        // --- 1. RÉCUPÉRATION INFOS ÉMISSION ---
+        async function fetchApiData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+                const data = await response.json();
+
+                let progName = "Radio Cause Commune";
+                let progDesc = "";
+                let startTime = null;
+                let endTime = null;
+
+                if (data.shows && data.shows.current && data.shows.current.name) {
+                    const show = data.shows.current;
+                    progName = show.name;
+                    progDesc = show.description || "";
+                    startTime = show.starts;
+                    endTime = show.ends;
+                } else if (data.tracks && data.tracks.current && data.tracks.current.name) {
+                    const track = data.tracks.current;
+                    progName = track.name;
+                    startTime = track.starts;
+                    endTime = track.ends;
+                }
+
+                document.getElementById('prog-name').innerText = progName;
+
+                if (!progDesc && data.shows && data.shows.current && data.shows.current.genre) {
+                    progDesc = data.shows.current.genre;
+                }
+                if (progDesc.length > 85) progDesc = progDesc.substring(0, 85) + "...";
+                document.getElementById('prog-desc').innerText = progDesc;
+
+                if (startTime && endTime) {
+                    globalStartTime = new Date(startTime);
+                    globalEndTime = new Date(endTime);
+                    const formatTime = (date) => date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    document.getElementById('prog-time-text').innerText = `${formatTime(globalStartTime)} - ${formatTime(globalEndTime)}`;
+                } else {
+                    globalStartTime = null;
+                    globalEndTime = null;
+                    document.getElementById('prog-time-text').innerText = "93.1 FM";
+                    document.getElementById('prog-bar').style.width = "0%";
+                }
+
+            } catch (error) {
+                console.error("Erreur API émission:", error);
+            }
+        }
+
+        // --- 2. MISE À JOUR BARRE DE PROGRESSION ---
+        function updateProgressBar() {
+            if (!globalStartTime || !globalEndTime) return;
+
+            const now = new Date();
+
+            if (now < globalStartTime) {
+                document.getElementById('prog-bar').style.width = "0%";
+            } else if (now > globalEndTime) {
+                document.getElementById('prog-bar').style.width = "100%";
+            } else {
+                const totalDuration = globalEndTime - globalStartTime;
+                const elapsedTime = now - globalStartTime;
+                const percentage = (elapsedTime / totalDuration) * 100;
+                document.getElementById('prog-bar').style.width = percentage + "%";
+            }
+        }
+
+        // --- 3. SOUS-TITRES EN TEMPS RÉEL (VOXTRAL SOCKET.IO) ---
+        function initVoxtralSubtitles() {
+            const statusEl = document.getElementById('connection-status');
+
+            // Connexion Socket.IO
+            socket = io(VOXTRAL_SOCKETIO_URL, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: Infinity
+            });
+
+            socket.on('connect', () => {
+                console.log('✅ Connecté au bridge Voxtral');
+                statusEl.innerText = '🟢 Connecté';
+                statusEl.className = 'connected show';
+                setTimeout(() => {
+                    statusEl.classList.remove('show');
+                }, 3000);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('❌ Déconnecté du bridge Voxtral');
+                statusEl.innerText = '🔴 Déconnecté';
+                statusEl.className = 'disconnected show';
+            });
+
+            // Événement: transcription incrémentale
+            socket.on('subtitle', (data) => {
+                console.log('📝 Subtitle delta:', data);
+                if (data.full_text && data.full_text.trim() !== lastSubtitleText) {
+                    lastSubtitleText = data.full_text.trim();
+                    showSubtitle(lastSubtitleText);
+                }
+            });
+
+            // Événement: segment complet
+            socket.on('subtitle_complete', (data) => {
+                console.log('✅ Subtitle complete:', data);
+                if (data.text && data.text.trim()) {
+                    lastSubtitleText = data.text.trim();
+                    showSubtitle(lastSubtitleText);
+                }
+            });
+
+            // Événement: erreur
+            socket.on('error', (data) => {
+                console.error('❌ Erreur Voxtral:', data);
+            });
+
+            socket.on('reconnect', (attemptNumber) => {
+                console.log(`🔄 Reconnecté après ${attemptNumber} tentative(s)`);
+            });
+
+            socket.on('reconnect_error', (error) => {
+                console.error('❌ Erreur de reconnexion:', error);
+            });
+        }
+
+        function showSubtitle(text) {
+            const container = document.getElementById('subtitle-container');
+            const textElement = document.getElementById('subtitle-text');
+
+            // Mettre à jour le texte
+            textElement.innerText = text;
+
+            // Afficher le sous-titre
+            container.classList.add('show');
+
+            // Cacher après 8 secondes (ou quand nouveau texte arrive)
+            clearTimeout(subtitleTimeout);
+            subtitleTimeout = setTimeout(() => {
+                container.classList.remove('show');
+            }, 8000);
+        }
+
+        // --- DÉMARRAGE ---
+
+        // Infos émission
+        fetchApiData();
+        setInterval(fetchApiData, 10000);
+
+        // Barre de progression
+        setInterval(updateProgressBar, 1000);
+
+        // Sous-titres Voxtral (Socket.IO)
+        initVoxtralSubtitles();
+
+    </script>
+</body>
+
+</html>

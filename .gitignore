@@ -1,0 +1,42 @@
+# ============================================================================
+# .gitignore - Radio Cause Commune - RTMP Multistream
+# ============================================================================
+
+# Secrets et configuration locale
+.env
+*.pem
+*.key
+
+# Données runtime
+recordings/
+logs/
+hls/
+dash/
+
+# Configuration générée (à regénérer via generate-nginx.sh)
+nginx.conf
+
+# Données de session
+platforms.json
+schedule.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+docker-compose.override.yml
+
+# Gemini / AI
+.gemini/
