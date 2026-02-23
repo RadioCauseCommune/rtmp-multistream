@@ -4,6 +4,12 @@ Solution open-source de **multistreaming dynamique** propulsée par Nginx-RTMP, 
 
 **Développée par et pour [Radio Cause Commune — 93.1 FM Paris](https://causecommune.fm)**
 
+![Dashboard Idle](docs/screenshots/dashboard_idle.png)
+*Interface principale — Mode veille*
+
+![Dashboard Live](docs/screenshots/dashboard_live.png)
+*Interface principale — Mode direct (avec monitoring des relays)*
+
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 ---
