@@ -40,3 +40,4 @@ docker-compose.override.yml
 
 # Gemini / AI
 .gemini/
+reverse-proxy.conf
