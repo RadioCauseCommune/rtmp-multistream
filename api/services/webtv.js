@@ -5,7 +5,7 @@
 const puppeteer = require('puppeteer');
 const { spawn } = require('child_process');
 
-const OVERLAY_URL = process.env.WEBTV_OVERLAY_URL || 'http://localhost:3000/overlay/index.html';
+const OVERLAY_URL = process.env.WEBTV_OVERLAY_URL || 'http://127.0.0.1:3000/overlay/index.html';
 const AUDIO_URL = process.env.WEBTV_AUDIO_URL || 'https://connect.libre-a-toi.org/voixdulat_mp3';
 const OUTPUT_URL = process.env.WEBTV_OUTPUT_URL || 'rtmp://nginx-rtmp:1935/webtv/live';
 const VOXTRAL_URL = process.env.VOXTRAL_URL || '';

@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ─────────────────────────────────────────────────────────────────
-app.use('/overlay', express.static(path.join(__dirname, '..', 'webtv-overlay')));
+app.use('/overlay', express.static(path.join(__dirname, 'webtv-overlay')));
 app.use('/api/platforms', platformsRoutes);
 app.use('/api/stream', streamRoutes);
 app.use('/api/stats', statsRoutes);
