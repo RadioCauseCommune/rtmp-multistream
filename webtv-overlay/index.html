@@ -298,8 +298,9 @@
     <script>
         // --- CONFIGURATION ---
         const API_URL = 'https://audio.libre-a-toi.org/api/live-info-v2';
-        // Bridge Voxtral sur le Z440 (LAN)
-        const VOXTRAL_SOCKETIO_URL = 'http://192.168.10.105:5004';
+        // Bridge Voxtral — URL passée en paramètre ?voxtral=http://IP:PORT
+        const urlParams = new URLSearchParams(window.location.search);
+        const VOXTRAL_SOCKETIO_URL = urlParams.get('voxtral') || '';
 
         // Variables globales
         let globalStartTime = null;
@@ -378,6 +379,10 @@
 
         // --- 3. SOUS-TITRES EN TEMPS RÉEL (VOXTRAL SOCKET.IO) ---
         function initVoxtralSubtitles() {
+            if (!VOXTRAL_SOCKETIO_URL) {
+                console.log('ℹ️ Voxtral désactivé (aucune URL configurée)');
+                return;
+            }
             const statusEl = document.getElementById('connection-status');
 
             // Connexion Socket.IO

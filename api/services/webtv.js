@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const OVERLAY_URL = process.env.WEBTV_OVERLAY_URL || 'http://localhost:3000/overlay/index.html';
 const AUDIO_URL = process.env.WEBTV_AUDIO_URL || 'https://connect.libre-a-toi.org/voixdulat_mp3';
 const OUTPUT_URL = process.env.WEBTV_OUTPUT_URL || 'rtmp://nginx-rtmp:1935/webtv/live';
+const VOXTRAL_URL = process.env.VOXTRAL_URL || '';
 
 let webtvState = {
     status: 'stopped', // stopped, starting, running, error
@@ -44,14 +45,21 @@ async function startWebTV() {
         await new Promise(r => setTimeout(r, 1000));
 
         // 2. Lancer Puppeteer dans le framebuffer Xvfb
-        console.log(`[WebTV] Lancement de Chrome headless sur ${OVERLAY_URL}`);
+        // Construire l'URL complète de l'overlay (avec paramètre Voxtral si configuré)
+        let fullOverlayUrl = OVERLAY_URL;
+        if (VOXTRAL_URL) {
+            const sep = OVERLAY_URL.includes('?') ? '&' : '?';
+            fullOverlayUrl = `${OVERLAY_URL}${sep}voxtral=${encodeURIComponent(VOXTRAL_URL)}`;
+        }
+
+        console.log(`[WebTV] Lancement de Chrome headless sur ${fullOverlayUrl}`);
         webtvState.browser = await puppeteer.launch({
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
             headless: false, // Doit être 'false' pour le rendu dans Xvfb
             defaultViewport: { width: 1920, height: 1080 },
             ignoreDefaultArgs: ['--enable-automation'],
             args: [
-                `--app=${OVERLAY_URL}`,
+                `--app=${fullOverlayUrl}`,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
@@ -79,8 +87,8 @@ async function startWebTV() {
         await page.addStyleTag({ content: 'body { overflow: hidden; margin: 0; padding: 0; }' }).catch(() => { });
 
         try {
-            if (page.url() !== OVERLAY_URL && page.url() !== `${OVERLAY_URL}/`) {
-                await page.goto(OVERLAY_URL, { waitUntil: 'networkidle2', timeout: 15000 });
+            if (page.url() !== fullOverlayUrl && page.url() !== `${fullOverlayUrl}/`) {
+                await page.goto(fullOverlayUrl, { waitUntil: 'networkidle2', timeout: 15000 });
             }
         } catch (e) {
             console.log('[WebTV] Erreur mineure goto:', e.message);
