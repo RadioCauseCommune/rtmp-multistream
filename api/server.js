@@ -57,10 +57,10 @@ app.use((err, req, res, _next) => {
 });
 
 // ── Démarrage ──────────────────────────────────────────────────────────────
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '127.0.0.1', () => {
     console.log(`[API] Serveur démarré sur le port ${PORT}`);
-    console.log(`[API] Stream source: ${process.env.NGINX_RTMP_URL || 'rtmp://nginx-rtmp:1935/live'}`);
-    console.log(`[API] Stats source: ${process.env.NGINX_STAT_URL || 'http://nginx-rtmp:8080/stat'}`);
+    console.log(`[API] Stream source: ${process.env.NGINX_RTMP_URL || 'rtmp://127.0.0.1:1935/live'}`);
+    console.log(`[API] Stats source: ${process.env.NGINX_STAT_URL || 'http://127.0.0.1:8080/stat'}`);
 
     // Initialiser le scheduler de la WebTV
     const scheduler = require('./services/scheduler');

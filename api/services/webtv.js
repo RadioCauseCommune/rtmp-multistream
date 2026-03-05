@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 
 const OVERLAY_URL = process.env.WEBTV_OVERLAY_URL || 'http://127.0.0.1:3000/overlay/index.html';
 const AUDIO_URL = process.env.WEBTV_AUDIO_URL || 'https://connect.libre-a-toi.org/voixdulat_mp3';
-const OUTPUT_URL = process.env.WEBTV_OUTPUT_URL || 'rtmp://nginx-rtmp:1935/webtv/live';
+const OUTPUT_URL = process.env.WEBTV_OUTPUT_URL || 'rtmp://127.0.0.1:1935/webtv/live';
 const VOXTRAL_URL = process.env.VOXTRAL_URL || '';
 
 let webtvState = {
@@ -114,7 +114,7 @@ async function startWebTV() {
             '-map', '1:a',
             // Encodage
             '-c:v', 'libx264',
-            '-preset', 'veryfast',
+            '-preset', 'ultrafast',
             '-b:v', '2500k',
             '-pix_fmt', 'yuv420p',
             '-g', '60',

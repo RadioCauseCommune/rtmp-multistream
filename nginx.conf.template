@@ -26,11 +26,13 @@ rtmp {
             allow publish 127.0.0.1;
             deny publish all;
 
+            on_publish http://127.0.0.1:3000/api/stream/validate;
+
             allow play all;
 
             # ── Notification Scheduler (détection OBS en temps réel) ──
-            exec_publish      curl -sf http://rtmp-api:3000/api/schedule/obs-active || true;
-            exec_publish_done curl -sf http://rtmp-api:3000/api/schedule/obs-inactive || true;
+            exec_publish      curl -sf http://127.0.0.1:3000/api/schedule/obs-active || true;
+            exec_publish_done curl -sf http://127.0.0.1:3000/api/schedule/obs-inactive || true;
 
             # ── Push vers les plateformes ───────────────────────────
             # Les push vers les plateformes (Twitch, YouTube, X,
@@ -39,8 +41,22 @@ rtmp {
             # Voir: api/services/ffmpeg.js
 
             # ── Split & Transcodage (Adaptive Bitrate) ───────────────────
-            # FFmpeg s'exécute pour générer plusieurs qualités vidéo (1080p est copié tel quel pour économiser le CPU)
-            exec_push ffmpeg -i rtmp://127.0.0.1:1935/live/$name -c copy -f flv rtmp://127.0.0.1:1935/hls/$name-1080p -c:v libx264 -c:a aac -b:v 2500k -b:a 128k -vf "scale=1280:-2" -tune zerolatency -preset veryfast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-720p -c:v libx264 -c:a aac -b:v 1000k -b:a 128k -vf "scale=854:-2" -tune zerolatency -preset veryfast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-480p -c:a aac -b:a 96k -vn -f flv rtmp://127.0.0.1:1935/hls/$name-audio;
+            # FFmpeg s'exécute            # Transcodage Multi-Qualité (HLS)
+            # Qualité 1080p (Source pass-through)
+            exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name
+              -c copy -f flv rtmp://127.0.0.1:1935/hls/$name-1080p;
+
+            # Qualité 480p (Transcodage pour connexions mobiles/faibles)
+            exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name
+              -c:v libx264 -c:a aac -b:v 1000k -b:a 128k -vf scale=854:-2 -tune zerolatency -preset ultrafast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-480p;
+
+            # Qualité 720p (Désactivée temporairement pour debug CPU)
+            # exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name
+            #   -c:v libx264 -c:a aac -b:v 2500k -b:a 128k -vf scale=1280:-2 -tune zerolatency -preset veryfast -profile:v baseline -f flv rtmp://127.0.0.1:1935/hls/$name-720p;
+
+            # Qualité Audio (Désactivée temporairement pour debug CPU)
+            # exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name
+            #   -c:a aac -b:a 96k -vn -f flv rtmp://127.0.0.1:1935/hls/$name-audio;
 
             push rtmp://127.0.0.1:1935/archive;
         }
@@ -132,6 +148,11 @@ http {
         # STATS - Accès restreint aux IPs de confiance
         # ============================================================
         location /stat {
+            allow 127.0.0.1;
+            allow 192.168.10.0/24;
+            allow 192.168.20.0/24;
+            allow 10.10.10.0/24;
+            deny all;
 
             rtmp_stat all;
             rtmp_stat_stylesheet stat.xsl;
@@ -167,9 +188,9 @@ http {
                 video/mp2t ts;
             }
             root /tmp;
-            # On autorise le cross-origin de manière plus large pour les lecteurs web
+            # On autorise le cross-origin uniquement pour le domaine de confiance
             add_header Cache-Control no-cache;
-            add_header Access-Control-Allow-Origin * always;
+            add_header Access-Control-Allow-Origin "$CORS_DOMAIN" always;
             add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
             add_header X-Content-Type-Options nosniff always;
         }
@@ -187,6 +208,11 @@ http {
         # RECORDINGS - Accès restreint aux IPs de confiance
         # ============================================================
         location /recordings {
+            allow 127.0.0.1;
+            allow 192.168.10.0/24;
+            allow 192.168.20.0/24;
+            allow 10.10.10.0/24;
+            deny all;
 
             alias /var/recordings;
             autoindex on;
@@ -197,15 +223,13 @@ http {
 
         # Proxy interne pour éviter les échecs de résolution au démarrage
         location /api-callback {
-            set $api_upstream "rtmp-api";
-            proxy_pass http://$api_upstream:3000/api/vod/callback;
+            proxy_pass http://127.0.0.1:3000/api/vod/callback;
             proxy_set_header Host $host;
         }
 
         # Proxy interne pour les callbacks du scheduler
         location /schedule-callback/ {
-            set $api_upstream "rtmp-api";
-            proxy_pass http://$api_upstream:3000/api/schedule/;
+            proxy_pass http://127.0.0.1:3000/api/schedule/;
             proxy_set_header Host $host;
         }
     }

@@ -12,7 +12,9 @@ const activeRelays = new Map();
 
 // Nom du stream entrant (fallback si détection auto échoue)
 const STREAM_NAME = process.env.STREAM_NAME || 'radiocausecommune';
-const NGINX_RTMP_URL = process.env.NGINX_RTMP_URL || 'rtmp://nginx-rtmp:1935/live';
+const NGINX_RTMP_URL = process.env.NGINX_RTMP_URL || 'rtmp://127.0.0.1:1935/live';
+const OUTBOUND_IP = process.env.OUTBOUND_IP || '109.190.179.161';
+
 
 /**
  * Charger les clés de stream depuis les variables d'environnement
@@ -98,6 +100,8 @@ async function startRelay(platformId) {
             const webtvStatus = webtvService.getWebTVStatus();
             let actualArgs = [];
 
+            const isLocalOutput = outputUrl.includes('127.0.0.1') || outputUrl.includes('localhost');
+
             if (activeStreamName) {
                 console.log(`[FFmpeg] OBS stream détecté: '${activeStreamName}' - Relay direct`);
                 const currentInputUrl = `${NGINX_RTMP_URL}/${activeStreamName}`;
@@ -107,20 +111,26 @@ async function startRelay(platformId) {
                     '-i', currentInputUrl,
                     '-c', 'copy',
                     '-f', 'flv', '-flvflags', 'no_duration_filesize',
-                    outputUrl,
                 ];
+                if (!isLocalOutput) {
+                    actualArgs.push('-localaddr', OUTBOUND_IP);
+                }
+                actualArgs.push(outputUrl);
                 relay.mode = 'live';
             } else if (webtvStatus.status === 'running') {
                 console.log(`[FFmpeg] WebTV active - Relay de la WebTV`);
-                const currentInputUrl = webtvStatus.outputUrl || 'rtmp://nginx-rtmp:1935/webtv/live';
+                const currentInputUrl = webtvStatus.outputUrl || 'rtmp://127.0.0.1:1935/webtv/live';
                 actualArgs = [
                     '-hide_banner', '-loglevel', 'warning',
                     '-rw_timeout', '10000000',
                     '-i', currentInputUrl,
                     '-c', 'copy',
                     '-f', 'flv', '-flvflags', 'no_duration_filesize',
-                    outputUrl,
                 ];
+                if (!isLocalOutput) {
+                    actualArgs.push('-localaddr', OUTBOUND_IP);
+                }
+                actualArgs.push(outputUrl);
                 relay.mode = 'webtv';
             } else {
                 console.log(`[FFmpeg] OBS stream HORS LIGNE et WebTV arrêtée - Envoi de la Mire de secours`);
@@ -129,11 +139,14 @@ async function startRelay(platformId) {
                     '-re',
                     '-stream_loop', '-1',
                     '-i', '/app/mire.mp4',
-                    '-c:v', 'libx264', '-preset', 'veryfast', '-b:v', '2000k', '-g', '60',
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-b:v', '2000k', '-g', '60',
                     '-c:a', 'aac', '-b:a', '128k',
                     '-f', 'flv', '-flvflags', 'no_duration_filesize',
-                    outputUrl,
                 ];
+                if (!isLocalOutput) {
+                    actualArgs.push('-localaddr', OUTBOUND_IP);
+                }
+                actualArgs.push(outputUrl);
                 relay.mode = 'mire';
             }
 

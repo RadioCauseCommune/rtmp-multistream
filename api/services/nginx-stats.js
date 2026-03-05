@@ -5,7 +5,7 @@
 const http = require('http');
 const { parseStringPromise } = require('xml2js');
 
-const NGINX_STAT_URL = process.env.NGINX_STAT_URL || 'http://nginx-rtmp:8080/stat';
+const NGINX_STAT_URL = process.env.NGINX_STAT_URL || 'http://127.0.0.1:8080/stat';
 
 /**
  * Récupérer le XML brut depuis nginx-rtmp /stat

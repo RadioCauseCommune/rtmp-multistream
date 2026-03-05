@@ -63,4 +63,24 @@ router.post('/stop-all', (req, res) => {
     res.json({ results });
 });
 
+/**
+ * POST /api/stream/validate
+ * Validation du nom du stream (appelé par nginx on_publish)
+ * Empêche l'injection de commandes via la variable $name
+ */
+router.post('/validate', (req, res) => {
+    const streamName = req.body.name;
+
+    // N'accepter que de l'alphanumérique, tirets et underscores
+    const isValid = /^[a-zA-Z0-9_-]+$/.test(streamName);
+
+    if (isValid) {
+        console.log(`[API] Validation stream OK: ${streamName}`);
+        res.status(200).send('OK');
+    } else {
+        console.warn(`[API] Tentative de stream avec nom invalide bloquée: ${streamName}`);
+        res.status(403).send('Forbidden');
+    }
+});
+
 module.exports = router;

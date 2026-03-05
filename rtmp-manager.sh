@@ -98,9 +98,19 @@ cmd_status() {
 
 cmd_logs() {
     local service="${1:-nginx-rtmp}"
-    print_info "Logs de $service (Ctrl+C pour quitter):"
-    cd "$SCRIPT_DIR"
-    docker-compose logs -f "$service"
+    
+    # Sécurité : Validation du service (Whitelist)
+    case "$service" in
+        nginx-rtmp|rtmp-api|rtmp-stats|stunnel)
+            print_info "Logs de $service (Ctrl+C pour quitter):"
+            cd "$SCRIPT_DIR"
+            docker compose logs -f "$service"
+            ;;
+        *)
+            print_error "Service inconnu: $service"
+            exit 1
+            ;;
+    esac
 }
 
 cmd_stats() {
@@ -158,6 +168,7 @@ cmd_backup() {
     
     local backup_dir="$SCRIPT_DIR/backups/backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$backup_dir"
+    chmod 700 "$backup_dir"
     
     # Backup config
     [ -f "$SCRIPT_DIR/nginx.conf.template" ] && cp "$SCRIPT_DIR/nginx.conf.template" "$backup_dir/"
