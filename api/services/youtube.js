@@ -19,8 +19,19 @@ function getCredentials() {
     return {
         clientId: process.env.YOUTUBE_CLIENT_ID,
         clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
-        callbackBase: process.env.OAUTH_CALLBACK_BASE || '',
+        callbackBase: (process.env.OAUTH_CALLBACK_BASE || '').replace(/\/$/, ''),
     };
+}
+
+function getCallbackBase() {
+    const base = (process.env.OAUTH_CALLBACK_BASE || '').replace(/\/$/, '');
+    if (!base || !base.startsWith('http')) {
+        throw new Error(
+            'OAUTH_CALLBACK_BASE non configuré ou invalide. ' +
+            'Ajoutez dans .env : OAUTH_CALLBACK_BASE=https://votre-domaine.fr'
+        );
+    }
+    return base;
 }
 
 function isConfigured() {
@@ -57,7 +68,8 @@ function revokeTokens() {
 // ── OAuth2 flow ───────────────────────────────────────────────────────────────
 
 function getAuthUrl() {
-    const { clientId, callbackBase } = getCredentials();
+    const { clientId } = getCredentials();
+    const callbackBase = getCallbackBase();
     const redirectUri = `${callbackBase}/api/broadcast/youtube/callback`;
     const params = new URLSearchParams({
         client_id: clientId,
@@ -74,8 +86,8 @@ function getAuthUrl() {
 }
 
 async function exchangeCode(code) {
-    const { clientId, clientSecret, callbackBase } = getCredentials();
-    const redirectUri = `${callbackBase}/api/broadcast/youtube/callback`;
+    const { clientId, clientSecret } = getCredentials();
+    const redirectUri = `${getCallbackBase()}/api/broadcast/youtube/callback`;
     const resp = await axios.post(OAUTH_TOKEN_URL, new URLSearchParams({
         code,
         client_id: clientId,
