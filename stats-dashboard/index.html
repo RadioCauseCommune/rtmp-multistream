@@ -2642,12 +2642,25 @@
       lucide.createIcons();
     }
 
+    function watchOAuthPopup(popup) {
+      const timer = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(timer);
+          setTimeout(fetchBroadcastStatus, 500);
+        }
+      }, 500);
+    }
+
     async function ytConnect() {
       const data = await apiCall('GET', '/broadcast/youtube/auth-url');
-      if (!data?.authUrl) { showToast('Erreur : impossible d\'obtenir l\'URL OAuth', 'error'); return; }
+      if (!data?.authUrl) {
+        showToast(data?.error || 'Erreur : impossible d\'obtenir l\'URL OAuth', 'error');
+        return;
+      }
       addLog('Ouverture du flux OAuth YouTube...', 'info');
-      window.open(data.authUrl, '_blank', 'width=600,height=700');
+      const popup = window.open(data.authUrl, '_blank', 'width=600,height=700');
       showToast('Fenêtre OAuth ouverte — autorisez l\'accès puis actualisez', 'info');
+      watchOAuthPopup(popup);
     }
 
     async function ytDisconnect() {
@@ -2815,10 +2828,14 @@
 
     async function twConnect() {
       const data = await apiCall('GET', '/broadcast/twitch/auth-url');
-      if (!data?.authUrl) { showToast('Erreur : impossible d\'obtenir l\'URL OAuth', 'error'); return; }
+      if (!data?.authUrl) {
+        showToast(data?.error || 'Erreur : impossible d\'obtenir l\'URL OAuth', 'error');
+        return;
+      }
       addLog('Ouverture du flux OAuth Twitch...', 'info');
-      window.open(data.authUrl, '_blank', 'width=600,height=700');
+      const popup = window.open(data.authUrl, '_blank', 'width=600,height=700');
       showToast('Fenêtre OAuth ouverte — autorisez l\'accès puis actualisez', 'info');
+      watchOAuthPopup(popup);
     }
 
     async function twDisconnect() {
