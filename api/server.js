@@ -14,12 +14,14 @@ const statsRoutes = require('./routes/stats');
 const webtvRoutes = require('./routes/webtv');
 const vodRoutes = require('./routes/vod');
 const scheduleRoutes = require('./routes/schedule');
+const broadcastRoutes = require('./routes/broadcast');
 
 const app = express();
 const PORT = process.env.API_PORT || 3000;
 
 // ── Middleware ──────────────────────────────────────────────────────────────
-app.use(cors());
+const corsOrigin = process.env.CORS_DOMAIN || '*';
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -39,6 +41,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/webtv', webtvRoutes);
 app.use('/api/vod', vodRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/broadcast', broadcastRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
