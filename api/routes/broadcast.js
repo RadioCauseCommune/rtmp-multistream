@@ -52,7 +52,11 @@ router.get('/youtube/auth-url', (req, res) => {
     if (!youtubeService.isConfigured()) {
         return res.status(400).json({ error: 'YOUTUBE_CLIENT_ID et YOUTUBE_CLIENT_SECRET non configurés' });
     }
-    res.json({ authUrl: youtubeService.getAuthUrl() });
+    try {
+        res.json({ authUrl: youtubeService.getAuthUrl() });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 /**
@@ -205,7 +209,11 @@ router.get('/twitch/auth-url', (req, res) => {
     if (!twitchService.isConfigured()) {
         return res.status(400).json({ error: 'TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET non configurés' });
     }
-    res.json({ authUrl: twitchService.getAuthUrl() });
+    try {
+        res.json({ authUrl: twitchService.getAuthUrl() });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 /**
