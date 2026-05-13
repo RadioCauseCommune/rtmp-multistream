@@ -45,8 +45,8 @@ fi
 # --- Génération de la config ---
 echo "Génération de nginx.conf..."
 
-# Copier le template tel quel (plus besoin de substitution de clés)
-cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
+# Remplacer la variable $CORS_DOMAIN par sa valeur depuis le .env
+sed 's|$CORS_DOMAIN|'"${CORS_DOMAIN}"'|g' "$TEMPLATE_FILE" > "$OUTPUT_FILE"
 
 # --- Restriction des permissions (lisible uniquement par root/nginx) ---
 chmod 600 "$OUTPUT_FILE"
